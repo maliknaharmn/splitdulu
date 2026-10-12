@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 500 166" role="img" aria-label="SplitDulu">
+  <path fill="#B8E944" d="M49 1h44c17 0 26 9 26 23 0 15-9 23-25 23H59c-11 0-16-5-16-13 0-9-5-14-13-14-9 0-15 8-15 18 0 14 13 21 37 28l25 7c28 8 43 21 43 43 0 22-19 34-47 34H25C9 150 0 142 0 128c0-14 9-23 24-23h37c-1 17 5 26 16 26 10 0 16-7 16-16 0-10-8-16-25-21l-27-8C13 78 0 63 0 43 0 18 21 1 49 1Z"/>
+  <text x="139" y="105" fill="#171B16" font-family="Montserrat,Arial,sans-serif" font-size="70" font-weight="700" letter-spacing="-5">Split<tspan font-weight="800">Dulu</tspan></text>
+</svg>

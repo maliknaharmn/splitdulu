@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f8f9f3;
+  --foreground: #171b16;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Montserrat", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: "Montserrat", sans-serif; }
+button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+button, input, select { font: inherit; }
+::selection { background: #c8f269; color: #171b16; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+.field-label { display: block; margin-bottom: 9px; color: #485144; font-size: 12px; font-weight: 700; }
+.surface { border: 1px solid #e5e9df; background: #fff; box-shadow: 0 12px 36px rgba(23, 27, 22, 0.035); }
+.receipt-dialog { margin: auto; border: 0; color: #171b16; }
+.receipt-dialog::backdrop { background: rgba(15, 23, 12, 0.65); backdrop-filter: blur(6px); }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
