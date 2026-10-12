@@ -2,6 +2,8 @@
 
 MVP pembagi bill untuk grup kecil. Quick Split dan Detail per Item menghitung bagian tiap orang, diskon, pajak, service, dan transfer ke satu pembayar. Tekan `Enter` untuk lanjut mengisi nama orang berikutnya. Struk personal dan struk penuh terperinci diekspor sebagai PNG 1080 × 1350 per halaman; struk panjang dapat dibagikan sekaligus atau diunduh sebagai ZIP berisi seluruh PNG. Data hanya tersimpan di `localStorage` browser ini.
 
+Coba langsung: [splitdulu.vercel.app](https://splitdulu.vercel.app/).
+
 ## Menjalankan lokal
 
 Butuh Node.js 20.9 atau lebih baru.
@@ -23,5 +25,3 @@ npm run lint
 npm run typecheck
 npm run build
 ```
-
-Keputusan produk, desain, aturan hitung, dan urutan implementasi ada di `PRD.md`, `DESIGN.md`, `TECHNICAL.md`, serta `IMPLEMENTATION_PLAN.md`.
