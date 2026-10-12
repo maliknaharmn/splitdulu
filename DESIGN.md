@@ -9,7 +9,7 @@ Status: **locked for implementation** · selaras dengan `PRD.md`
 ### Brand
 
 - **Logo:** lockup primer mengikuti referensi: mark `S` lime utuh di kiri dan wordmark horizontal `SplitDulu` ink, dengan `Split` bold dan `Dulu` extra-bold. Beri ruang aman di viewBox dan header agar mark maupun huruf tidak terpotong. Favicon mark yang sudah ada tetap, tidak diubah. Mark harus tetap terbaca monokrom.
-- **Header:** kredit `a project by Malik N` berada di bawah lockup, dengan hanya nama pembuat sebagai tautan Instagram terpisah dari tautan logo. Tombol lime `Buy me a coffee` menuju Trakteer berada di kanan, dengan ikon kopi vektor Lucide di kiri teks dan ikon panah di kanan. Pada layar kecil, logo dan indikator langkah berada di baris atas, kredit dan tombol di baris bawah.
+- **Header:** kredit `a project by Malik N` berada di bawah lockup, dengan hanya nama pembuat sebagai tautan Instagram terpisah dari tautan logo. Tombol lime `Buy me a coffee` menuju Trakteer berada di kanan, dengan ikon kopi vektor Lucide di kiri teks dan ikon panah di kanan. Di beranda, tombol sejajar baris logo mulai lebar 360 px; pada layar lebih sempit tombol berada di baris kredit. Pada halaman bertahap, indikator langkah tetap di baris logo dan tombol di baris bawah hingga layout desktop.
 - **Tipografi:** Montserrat lokal, 400/500 untuk isi, 600 untuk label, 700/800 untuk judul dan total. Angka memakai `font-variant-numeric: tabular-nums`.
 - **Palet:** background `#F8F9F3`, surface `#FFFFFF`, ink `#171B16`, muted `#687064`, chartreuse `#C8F269`, chartreuse gelap `#9FC949`, lavender lembut `#EBE7F7`, border `#E5E9DF`, error `#B13A30`.
 - **Radius:** tombol/field 14 px, card 22–28 px, receipt 42 px. Bayangan tipis; jangan mengandalkan bayangan untuk keterbacaan.
