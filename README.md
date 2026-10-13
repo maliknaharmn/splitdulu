@@ -1,30 +1,55 @@
 # SplitDulu
 
-**Split bill tanpa ribet.** SplitDulu adalah aplikasi web untuk membagi tagihan bersama, menghitung bagian setiap orang sampai rupiah terakhir, dan membagikan hasilnya. Tanpa akun atau backend.
+**Split the bill, not the conversation.** SplitDulu is a browser-based bill splitter for group meals and other shared bills in Indonesian rupiah (IDR). It calculates each person's share down to the last rupiah and makes the result easy to send. No account or backend is required. The app's interface is in Indonesian.
 
-[Coba SplitDulu](https://splitdulu.vercel.app/)
+**[Try SplitDulu](https://splitdulu.vercel.app/)**
 
-## Fitur
+## Preview
 
-- **Quick Split:** isi subtotal dan nominal dasar masing-masing orang tanpa memasukkan menu.
-- **Detail per Item:** tambahkan pesanan, jumlah, dan orang yang ikut berbagi setiap item.
-- **Perhitungan langsung:** diskon, pajak, dan service dibagi proporsional; subtotal dan total struk dapat dicek sebelum melihat hasil.
-- **Who Paid?:** pilih orang yang membayar dulu, lalu lihat nominal transfer dari peserta lain.
-- **Bagikan hasil:** salin ringkasan untuk WhatsApp atau bagikan struk personal dan struk lengkap sebagai PNG 1080 × 1350. Struk beberapa halaman dapat diunduh sebagai ZIP.
-- **Riwayat lokal:** lanjutkan bill terbaru di browser yang sama.
+**Build the bill.** Add participants, assign shared items and quantities, and check the running totals.
 
-## Menjalankan lokal
+[![SplitDulu itemized bill entry and total summary](screenshots/demo-1.png)](screenshots/demo-1.png)
 
-Gunakan Node.js 20.9 atau lebih baru. Tidak ada variabel environment yang wajib diisi.
+**Settle and share.** Review each person's share, see who owes the payer, and export a detailed receipt.
+
+[![SplitDulu settlement summary and full receipt preview](screenshots/demo-2.png)](screenshots/demo-2.png)
+
+## How it works
+
+1. Add the people sharing the bill. Choose **Quick Split** to enter each person's starting amount, or **Itemized Split** to assign items and quantities to one or more people.
+2. Add a discount, tax, and service charge. The totals update as you type, and you can check them against the original bill.
+3. Select **Who Paid?** to see what everyone else owes the person who paid.
+4. Copy a group summary for WhatsApp, or share/download a personal or full-group receipt.
+
+## Features
+
+- **Two ways to split:** use starting amounts for speed, or track individual and shared items with quantities.
+- **Balanced calculations:** discounts, tax, and service charges are allocated proportionally. Whole-rupiah rounding keeps the sum of everyone's shares equal to the final total.
+- **Bill checks:** Quick Split requires starting amounts to match the subtotal; Itemized Split can check its subtotal against the original bill. Both modes can check the final total.
+- **Clear settlements:** see each person's breakdown and the amount they should transfer to the payer.
+- **Shareable receipts:** export personal or full-group receipts as 1080 × 1350 PNG images. Longer receipts are paginated and can be downloaded together as a ZIP. Every image includes a subtle SplitDulu watermark.
+- **Recent bills:** resume up to five bills saved in the same browser.
+
+## Calculation rules
+
+All amounts are in whole rupiah. Shared items are divided equally among the people assigned to them. Discounts are allocated in proportion to each person's pre-discount share. Percentage-based tax and service charges are calculated on the discounted subtotal, then allocated in proportion to each person's post-discount share. Fixed-amount tax and service charges are also supported. Any leftover rupiah from proportional division is assigned deterministically so the breakdown always balances.
+
+## Privacy and storage
+
+Your current draft and recent bills are stored in your browser's `localStorage`, not in an account or bill database. They do not sync between devices and are lost if you clear this site's browser data. Sharing a copied summary or exported receipt is your choice.
+
+## Run locally
+
+Use Node.js 20.9 or newer. No environment variables are required.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Buka `http://localhost:3000`. Jika file watcher menampilkan `EMFILE` di macOS/Linux, jalankan `WATCHPACK_POLLING=true npm run dev`.
+Open `http://localhost:3000`. If the file watcher reports `EMFILE` on macOS or Linux, try `WATCHPACK_POLLING=true npm run dev`.
 
-## Pemeriksaan
+## Checks
 
 ```bash
 npm run lint
@@ -33,10 +58,8 @@ npm test
 npm run build
 ```
 
-## Penyimpanan data
+Built with Next.js, TypeScript, Tailwind CSS, shadcn/ui, and Lucide icons.
 
-Draft dan riwayat bill disimpan di `localStorage` browser. Data tidak disinkronkan antarperangkat dan akan hilang jika data situs/browser dihapus.
+## License and branding
 
-## Lisensi dan identitas
-
-Kode sumber SplitDulu dilisensikan dengan [MIT](LICENSE) © 2026 Malik Nahar. Lisensi ini tidak mencakup nama SplitDulu, logo, wordmark, atau karya visual identitasnya, termasuk bentuk vektor pada `components/brand.tsx` dan `public/favicon.svg`. Gunakan nama dan visual lain untuk fork yang dipublikasikan, atau minta izin terlebih dahulu. Dependensi pihak ketiga mengikuti lisensi masing-masing.
+The application source code is available under the [MIT License](LICENSE) © 2026 Malik Nahar. This does not include permission to reuse the SplitDulu name, logo, wordmark, or other visual identity assets, including the vectors in `components/brand.tsx` and `public/favicon.svg`. Please use your own name and visuals for a published fork, or ask for permission first. Third-party dependencies retain their respective licenses.
