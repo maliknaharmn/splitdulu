@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { calculateBill, MAX_ITEMS, MAX_PARTICIPANTS, type BillDraft, type BillItem, type Charge, type ValidationError } from "@/lib/bill";
 import { formatRupiah } from "@/lib/format";
+import { advanceOnEnter } from "@/lib/keyboard";
 import { useBill } from "@/providers/bill-provider";
 
 function SectionHeading({ number, title, description }: { number: string; title: string; description?: string }) {
@@ -38,6 +39,7 @@ function ChargeField({ label, charge, onChange, id }: { label: string; charge: C
           ? <MoneyInput id={id} value={charge.value} onValueChange={(value) => onChange({ ...charge, value: value ?? 0 })} aria-label={`${label} nominal`} />
           : <PercentInput id={id} value={charge.value} onValueChange={(value) => onChange({ ...charge, value })} aria-label={`${label} persen`} />}
         <select
+          data-enter-skip
           aria-label={`Satuan ${label}`}
           value={charge.kind}
           onChange={(event) => onChange({ kind: event.target.value as Charge["kind"], value: 0 })}
@@ -50,21 +52,13 @@ function ChargeField({ label, charge, onChange, id }: { label: string; charge: C
   );
 }
 
-function Difference({ label, actual, expected, difference }: { label: string; actual: number; expected: number; difference: number }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E9DF] py-3 text-xs font-semibold">
-      <span className="text-[#687064]">{label}</span>
-      <div className="text-right"><span className="tabular-nums">{formatRupiah(actual)} / {formatRupiah(expected)}</span><span className={`ml-2 font-bold ${difference === 0 ? "text-[#4C8126]" : "text-[#B13A30]"}`}>{difference === 0 ? "Cocok" : `${difference < 0 ? "Kurang" : "Lebih"} ${formatRupiah(Math.abs(difference))}`}</span></div>
-    </div>
-  );
-}
-
 export default function SplitPage() {
   const router = useRouter();
   const { bill, hydrated, storageError, updateBill, saveCurrentToRecent } = useBill();
   const result = React.useMemo(() => calculateBill(bill), [bill]);
   const participantInputs = React.useRef(new Map<string, HTMLInputElement>());
   const pendingParticipantFocus = React.useRef<string | null>(null);
+  const pendingItemFocus = React.useRef<string | null>(null);
   const personLabel = (index: number) => bill.participants[index]?.name.trim() || `Orang ${index + 1}`;
   const setBill = (updater: (current: BillDraft) => BillDraft) => updateBill(updater);
 
@@ -75,6 +69,14 @@ export default function SplitPage() {
       pendingParticipantFocus.current = null;
     }
   }, [bill.participants]);
+
+  React.useLayoutEffect(() => {
+    const id = pendingItemFocus.current;
+    if (id) {
+      document.getElementById(`item-name-${id}`)?.focus();
+      pendingItemFocus.current = null;
+    }
+  }, [bill.items]);
 
   function addParticipant(focusNew = false) {
     if (bill.participants.length >= MAX_PARTICIPANTS) return;
@@ -99,9 +101,11 @@ export default function SplitPage() {
 
   function addItem() {
     if (bill.items.length >= MAX_ITEMS) return;
+    const id = crypto.randomUUID();
+    pendingItemFocus.current = id;
     setBill((current) => ({
       ...current,
-      items: [...current.items, { id: crypto.randomUUID(), name: "", unitPrice: 0, quantity: 1, participantIds: current.participants[0] ? [current.participants[0].id] : [] }],
+      items: [...current.items, { id, name: "", unitPrice: 0, quantity: 1, participantIds: current.participants[0] ? [current.participants[0].id] : [] }],
     }));
   }
 
@@ -114,11 +118,11 @@ export default function SplitPage() {
   const quickShareTotal = bill.participants.reduce((sum, person) => sum + (Number.isSafeInteger(person.quickAmount) ? person.quickAmount : 0), 0);
 
   return (
-    <main className="min-h-svh pb-36">
+    <main className="min-h-svh pb-36" onKeyDown={advanceOnEnter}>
       <SiteHeader step="01 / 03 · Input bill" />
       <div className="mx-auto max-w-[740px] px-5 pt-5 sm:px-8 sm:pt-10">
         <button type="button" className="mb-7 inline-flex items-center gap-2 text-xs font-bold text-[#687064] hover:text-[#171B16]" onClick={() => router.push("/")}><ArrowLeft className="size-4" /> Kembali ke beranda</button>
-        <div className="mb-9"><div className="eyebrow text-[#70963C]">Satu bill, beres bareng</div><h1 className="mt-3 text-[clamp(2.3rem,7vw,3.7rem)] leading-[1.08] font-extrabold tracking-[-0.075em]">Bagi tagihannya.</h1><p className="mt-3 text-sm leading-6 font-medium text-[#687064]">Isi yang kamu tahu dulu. Angkanya langsung ikut berubah.</p></div>
+        <div className="mb-9"><div className="eyebrow text-[#70963C]">Satu bill, beres bareng</div><h1 className="mt-3 text-[clamp(2.3rem,7vw,3.7rem)] leading-[1.08] font-extrabold tracking-[-0.075em]">Bagi tagihannya.</h1><p className="mt-3 text-sm leading-6 font-medium text-[#687064]">Isi yang kamu tahu dulu. Angkanya langsung ikut berubah.</p><p className="mt-2 text-xs leading-5 font-medium text-[#8A9586]">Enter untuk lanjut antar-isian. Tab untuk pilihan dan tombol.</p></div>
         {storageError && <p role="status" className="mb-5 rounded-xl bg-[#FFF1EF] px-4 py-3 text-xs font-semibold text-[#A63127]">{storageError}</p>}
 
         <div className="space-y-5">
@@ -135,18 +139,12 @@ export default function SplitPage() {
           </CardContent></Card>
 
           <Card><CardContent>
-            <SectionHeading number="01" title="Siapa aja?" description={`Tambah 2–${MAX_PARTICIPANTS} orang. Tekan Enter untuk lanjut ke orang berikutnya.`} />
+            <SectionHeading number="01" title="Siapa aja?" description={`Tambah 2–${MAX_PARTICIPANTS} orang. Enter ke orang berikutnya, lalu lanjut isi bill.`} />
             <div className="space-y-3">
               {bill.participants.map((person, index) => (
                 <div key={person.id} className="flex items-center gap-2">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-[#EAF3DB] text-sm font-extrabold text-[#507528]">{String(index + 1).padStart(2, "0")}</span>
-                  <Input ref={(element) => { if (element) participantInputs.current.set(person.id, element); else participantInputs.current.delete(person.id); }} aria-label={`Nama orang ${index + 1}`} value={person.name} maxLength={32} placeholder={`Nama orang ${index + 1}`} onChange={(event) => setBill((current) => ({ ...current, participants: current.participants.map((entry) => entry.id === person.id ? { ...entry, name: event.target.value } : entry) }))} onKeyDown={(event) => {
-                    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-                    event.preventDefault();
-                    const nextPerson = bill.participants[index + 1];
-                    if (nextPerson) participantInputs.current.get(nextPerson.id)?.focus();
-                    else if (person.name.trim()) addParticipant(true);
-                  }} />
+                  <Input ref={(element) => { if (element) participantInputs.current.set(person.id, element); else participantInputs.current.delete(person.id); }} aria-label={`Nama orang ${index + 1}`} value={person.name} maxLength={32} placeholder={`Nama orang ${index + 1}`} onChange={(event) => setBill((current) => ({ ...current, participants: current.participants.map((entry) => entry.id === person.id ? { ...entry, name: event.target.value } : entry) }))} />
                   <Button type="button" variant="ghost" size="icon" aria-label={`Hapus ${personLabel(index)}`} title="Hapus orang" disabled={bill.participants.length <= 2} onClick={() => removeParticipant(person.id)}><Trash2 className="size-4" /></Button>
                 </div>
               ))}
@@ -187,7 +185,7 @@ export default function SplitPage() {
                 ))}
               </div>
               <FieldErrors errors={result.errors} fields={["items"]} />
-              <Button type="button" variant="outline" className="mt-4 w-full border-dashed" disabled={bill.items.length >= MAX_ITEMS} onClick={addItem}><Plus className="size-4" /> Tambah pesanan</Button>
+              <Button type="button" data-enter-step={bill.items.length === 0 ? "" : undefined} variant="outline" className="mt-4 w-full border-dashed" disabled={bill.items.length >= MAX_ITEMS} onClick={addItem}><Plus className="size-4" /> Tambah pesanan</Button>
               <div className="mt-5 flex items-center justify-between border-t border-[#E5E9DF] pt-4 text-sm font-bold"><span>Subtotal item</span><span className="tabular-nums">{formatRupiah(result.subtotal)}</span></div>
             </CardContent></Card>
           )}
@@ -204,29 +202,16 @@ export default function SplitPage() {
             <FieldErrors errors={result.errors} fields={["payer"]} />
           </CardContent></Card>
 
-          <Card><CardContent>
-            <SectionHeading number="05" title="Cek total struk" description="Opsional, tapi berguna untuk memastikan angka hasil cocok dengan struk asli." />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {bill.mode === "itemized" && <div><label className="field-label" htmlFor="expected-subtotal">Subtotal di struk</label><MoneyInput id="expected-subtotal" value={bill.expectedSubtotal} placeholder="Boleh dikosongkan" onValueChange={(value) => setBill((current) => ({ ...current, expectedSubtotal: value }))} /></div>}
-              <div><label className="field-label" htmlFor="expected-total">Total akhir di struk</label><MoneyInput id="expected-total" value={bill.expectedTotal} placeholder="Boleh dikosongkan" onValueChange={(value) => setBill((current) => ({ ...current, expectedTotal: value }))} /></div>
-            </div>
-            <div className="mt-4">
-              {bill.mode === "itemized" && bill.expectedSubtotal !== null && result.checks.subtotalDifference !== null && <Difference label="Subtotal" actual={result.subtotal} expected={bill.expectedSubtotal} difference={result.checks.subtotalDifference} />}
-              {bill.expectedTotal !== null && result.checks.totalDifference !== null && <Difference label="Total akhir" actual={result.total} expected={bill.expectedTotal} difference={result.checks.totalDifference} />}
-            </div>
-            <FieldErrors errors={result.errors} fields={["subtotal-check", "total-check"]} />
-          </CardContent></Card>
-
           <Card className="border-[#D8E8BE] bg-[#F3F9E9]"><CardContent>
             <div className="flex items-center justify-between gap-3"><div><div className="eyebrow text-[#70963C]">Live preview</div><h2 className="mt-1 text-lg font-extrabold tracking-[-0.04em]">Bagian sementara</h2></div><span className="rounded-full bg-white px-3 py-2 text-[10px] font-bold text-[#687064]">{result.canProceed ? "Siap" : "Belum final"}</span></div>
             <div className="mt-4 divide-y divide-[#DDEACB]">{result.people.map((person, index) => <div key={person.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 truncate font-semibold">{person.name || `Orang ${index + 1}`}</span><span className="shrink-0 font-extrabold tabular-nums">{formatRupiah(person.total)}</span></div>)}</div>
-            <p className="mt-2 text-xs leading-5 font-medium text-[#687064]">Angka ini mengikuti input langsung. Hasil baru bisa dibuka saat semua isian dan cek bill sudah cocok.</p>
+            <p className="mt-2 text-xs leading-5 font-medium text-[#687064]">Angka ini mengikuti input langsung. Hasil bisa dibuka setelah semua isian valid dan pembagiannya pas.</p>
           </CardContent></Card>
         </div>
       </div>
 
       <div className="fixed right-0 bottom-0 left-0 z-30 border-t border-[#DFE6D8] bg-[#F8F9F3]/95 px-5 py-3 backdrop-blur-xl sm:px-8 sm:py-4" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
-        <div className="mx-auto flex max-w-[680px] items-center gap-4"><div className="min-w-0 flex-1"><div aria-live="polite" className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.07em] text-[#687064] uppercase">{result.canProceed ? <Check className="size-3.5 text-[#4C8126]" /> : <CircleAlert className="size-3.5 text-[#B13A30]" />}{result.canProceed ? bill.expectedTotal !== null || (bill.mode === "itemized" && bill.expectedSubtotal !== null) ? "Cocok dengan struk" : "Perhitungan siap" : result.errors[0]?.message || "Lengkapi bill"}</div><div className="mt-1 truncate text-xl font-extrabold tracking-[-0.06em] tabular-nums sm:text-2xl">{result.subtotal > 0 ? formatRupiah(result.total) : "Rp—"}</div></div><Button type="button" size="lg" className="shrink-0" disabled={!hydrated || !result.canProceed} onClick={showResult}>Lihat Hasil <ArrowRight className="size-4" /></Button></div>
+        <div className="mx-auto flex max-w-[680px] items-center gap-4"><div className="min-w-0 flex-1"><div aria-live="polite" className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.07em] text-[#687064] uppercase">{result.canProceed ? <Check className="size-3.5 text-[#4C8126]" /> : <CircleAlert className="size-3.5 text-[#B13A30]" />}{result.canProceed ? "Perhitungan siap" : result.errors[0]?.message || "Lengkapi bill"}</div><div className="mt-1 truncate text-xl font-extrabold tracking-[-0.06em] tabular-nums sm:text-2xl">{result.subtotal > 0 ? formatRupiah(result.total) : "Rp—"}</div></div><Button type="button" data-enter-step size="lg" className="shrink-0" disabled={!hydrated || !result.canProceed} onClick={showResult}>Lihat Hasil <ArrowRight className="size-4" /></Button></div>
       </div>
     </main>
   );

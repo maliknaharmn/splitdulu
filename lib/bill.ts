@@ -23,8 +23,6 @@ export type BillDraft = {
   discount: number;
   tax: Charge;
   service: Charge;
-  expectedSubtotal: number | null;
-  expectedTotal: number | null;
   payerId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -51,7 +49,7 @@ export type BillCalculation = {
   total: number;
   people: PersonBreakdown[];
   settlements: Settlement[];
-  checks: { quickDifference: number | null; subtotalDifference: number | null; totalDifference: number | null };
+  checks: { quickDifference: number | null };
   errors: ValidationError[];
   canProceed: boolean;
 };
@@ -71,8 +69,6 @@ export function createBlankBill(id = "draft"): BillDraft {
     discount: 0,
     tax: { kind: "percent", value: 0 },
     service: { kind: "percent", value: 0 },
-    expectedSubtotal: null,
-    expectedTotal: null,
     payerId: null,
     createdAt: now,
     updatedAt: now,
@@ -149,7 +145,6 @@ export function calculateBill(bill: BillDraft): BillCalculation {
 
   let subtotal = 0;
   let quickDifference: number | null = null;
-  let subtotalDifference: number | null = null;
 
   if (bill.mode === "quick") {
     if (!isMoney(bill.quickSubtotal, MAX_SUBTOTAL) || bill.quickSubtotal === 0) {
@@ -187,13 +182,6 @@ export function calculateBill(bill: BillDraft): BillCalculation {
     }
     if (subtotal === 0) addError("items", "Subtotal item harus lebih dari Rp0.");
     if (subtotal > MAX_SUBTOTAL) addError("items", "Subtotal terlalu besar.");
-    if (bill.expectedSubtotal !== null) {
-      if (!isMoney(bill.expectedSubtotal, MAX_SUBTOTAL)) addError("subtotal-check", "Subtotal di struk tidak valid.");
-      else {
-        subtotalDifference = subtotal - bill.expectedSubtotal;
-        if (subtotalDifference !== 0) addError("subtotal-check", "Subtotal item belum cocok dengan struk.");
-      }
-    }
   } else {
     addError("mode", "Mode split tidak valid.");
   }
@@ -246,15 +234,6 @@ export function calculateBill(bill: BillDraft): BillCalculation {
   if (!Number.isSafeInteger(total) || total > MAX_SUBTOTAL + MAX_MONEY * 2) addError("total", "Total tagihan terlalu besar.");
   people.forEach((person) => { person.total = person.gross - person.discount + person.tax + person.service; });
 
-  let totalDifference: number | null = null;
-  if (bill.expectedTotal !== null) {
-    if (!isMoney(bill.expectedTotal, MAX_SUBTOTAL + MAX_MONEY * 2)) addError("total-check", "Total di struk tidak valid.");
-    else {
-      totalDifference = total - bill.expectedTotal;
-      if (totalDifference !== 0) addError("total-check", "Total hitungan belum cocok dengan struk.");
-    }
-  }
-
   const payer = people.find((person) => person.id === bill.payerId);
   if (!payer) addError("payer", "Pilih orang yang bayar dulu.");
   const settlements: Settlement[] = payer
@@ -282,7 +261,7 @@ export function calculateBill(bill: BillDraft): BillCalculation {
     total,
     people,
     settlements,
-    checks: { quickDifference, subtotalDifference, totalDifference },
+    checks: { quickDifference },
     errors,
     canProceed: errors.length === 0,
   };

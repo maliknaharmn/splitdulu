@@ -2,25 +2,22 @@ import type { BillCalculation, BillDraft, PersonBreakdown } from "./bill";
 import { formatRupiah } from "./format";
 
 export const FULL_FIRST_TOP = 626;
-export const FULL_CONTINUATION_TOP = 424;
-export const FULL_CONTENT_BOTTOM = 1155;
+export const RECEIPT_MIN_HEIGHT = 1350;
+export const RECEIPT_FOOTER_SPACE = 195;
 export const FULL_SECTION_HEADER = 54;
 export const FULL_LINE_HEIGHT = 45;
 export const FULL_SECTION_SUMMARY = 94;
-export const FULL_SECTION_CONTINUED = 20;
 export const FULL_SECTION_GAP = 18;
+export const PERSONAL_FIRST_BASELINE = 670;
+export const PERSONAL_LINE_HEIGHT = 38;
 
 export type ReceiptLine = { name: string; formula: string; amount: number };
 export type FullReceiptSection = {
   personIndex: number;
-  start: number;
-  end: number;
   top: number;
   height: number;
-  continued: boolean;
-  showSummary: boolean;
 };
-export type FullReceiptPage = { sections: FullReceiptSection[] };
+export type FullReceiptPlan = { sections: FullReceiptSection[]; height: number };
 
 export function receiptLines(bill: BillDraft, person: PersonBreakdown): ReceiptLine[] {
   if (bill.mode === "quick") return [{ name: "Bagian awal", formula: "Nominal dasar sebelum biaya", amount: person.gross }];
@@ -36,43 +33,24 @@ export function receiptLines(bill: BillDraft, person: PersonBreakdown): ReceiptL
   });
 }
 
-export function fullSectionHeight(lineCount: number, showSummary: boolean): number {
-  return FULL_SECTION_HEADER + lineCount * FULL_LINE_HEIGHT + (showSummary ? FULL_SECTION_SUMMARY : FULL_SECTION_CONTINUED) + FULL_SECTION_GAP;
+export function fullSectionHeight(lineCount: number): number {
+  return FULL_SECTION_HEADER + lineCount * FULL_LINE_HEIGHT + FULL_SECTION_SUMMARY + FULL_SECTION_GAP;
 }
 
-export function planFullReceipt(bill: BillDraft, result: BillCalculation): FullReceiptPage[] {
-  const pages: FullReceiptPage[] = [{ sections: [] }];
+export function planFullReceipt(bill: BillDraft, result: BillCalculation): FullReceiptPlan {
   let top = FULL_FIRST_TOP;
-
-  result.people.forEach((person, personIndex) => {
-    const totalLines = receiptLines(bill, person).length;
-    let start = 0;
-
-    while (start < totalLines) {
-      const currentPage = pages[pages.length - 1];
-      const remaining = totalLines - start;
-      const available = FULL_CONTENT_BOTTOM - top;
-      const finalHeight = fullSectionHeight(remaining, true);
-
-      if (finalHeight <= available) {
-        currentPage.sections.push({ personIndex, start, end: totalLines, top, height: finalHeight, continued: start > 0, showSummary: true });
-        top += finalHeight;
-        start = totalLines;
-        continue;
-      }
-
-      const maxPartialLines = Math.floor((available - fullSectionHeight(0, false)) / FULL_LINE_HEIGHT);
-      const take = Math.min(maxPartialLines, remaining - 1);
-      if (take >= 1) {
-        const height = fullSectionHeight(take, false);
-        currentPage.sections.push({ personIndex, start, end: start + take, top, height, continued: start > 0, showSummary: false });
-        start += take;
-      }
-
-      pages.push({ sections: [] });
-      top = FULL_CONTINUATION_TOP;
-    }
+  const sections = result.people.map((person, personIndex) => {
+    const height = fullSectionHeight(receiptLines(bill, person).length);
+    const section = { personIndex, top, height };
+    top += height;
+    return section;
   });
 
-  return pages;
+  return { sections, height: Math.max(RECEIPT_MIN_HEIGHT, top + RECEIPT_FOOTER_SPACE) };
+}
+
+export function planPersonalReceipt(bill: BillDraft, person: PersonBreakdown) {
+  const lineCount = bill.mode === "quick" ? 1 : person.itemShares.length;
+  const summaryTop = Math.max(1035, PERSONAL_FIRST_BASELINE + Math.max(0, lineCount - 1) * PERSONAL_LINE_HEIGHT + 40);
+  return { summaryTop, height: summaryTop + 315 };
 }

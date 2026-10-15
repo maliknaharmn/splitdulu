@@ -78,12 +78,17 @@ describe("calculation engine", () => {
     bill.participants[0].quickAmount -= 1;
     expect(calculateBill(bill).errors.some((error) => error.field === "quick-check")).toBe(true);
     bill.participants[0].quickAmount += 1;
-    bill.expectedTotal = 61_411;
-    expect(calculateBill(bill).checks.totalDifference).toBe(-1);
     bill.mode = "itemized";
-    bill.expectedTotal = null;
     bill.items = [{ id: "x", name: "Item", unitPrice: 10_000, quantity: 1, participantIds: [] }];
     expect(calculateBill(bill).canProceed).toBe(false);
+  });
+
+  it("ignores legacy receipt-total checks without changing the calculation", () => {
+    const bill = { ...validQuickBill(), expectedSubtotal: 1, expectedTotal: 1 };
+    expect(calculateBill(bill).canProceed).toBe(true);
+    bill.mode = "itemized";
+    bill.items = [{ id: "x", name: "Item", unitPrice: 100_000, quantity: 1, participantIds: ["a", "b"] }];
+    expect(calculateBill(bill).canProceed).toBe(true);
   });
 
   it("rejects discounts above subtotal and duplicate names", () => {

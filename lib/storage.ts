@@ -24,8 +24,6 @@ export function isBillDraft(value: unknown): value is BillDraft {
   if (value.mode !== "quick" && value.mode !== "itemized") return false;
   if (!Array.isArray(value.participants) || value.participants.length > MAX_PARTICIPANTS || !Array.isArray(value.items) || value.items.length > MAX_ITEMS) return false;
   if (!isMoney(value.quickSubtotal, MAX_SUBTOTAL) || !isMoney(value.discount) || !isCharge(value.tax) || !isCharge(value.service)) return false;
-  if (value.expectedSubtotal !== null && !isMoney(value.expectedSubtotal, MAX_SUBTOTAL)) return false;
-  if (value.expectedTotal !== null && !isMoney(value.expectedTotal, MAX_SUBTOTAL + 2 * MAX_MONEY)) return false;
   if (value.payerId !== null && (typeof value.payerId !== "string" || value.payerId.length > 100)) return false;
   if (typeof value.createdAt !== "string" || typeof value.updatedAt !== "string" || Number.isNaN(Date.parse(value.createdAt)) || Number.isNaN(Date.parse(value.updatedAt))) return false;
   const participantsValid = value.participants.every((participant) => isRecord(participant) &&
@@ -47,13 +45,20 @@ export function readPersistedState(): ReadResult {
     const value: unknown = JSON.parse(raw);
     if (!isRecord(value) || value.version !== 1) return { draft: null, recent: [], error: null };
     const recent = Array.isArray(value.recent)
-      ? value.recent.filter((bill): bill is BillDraft => isBillDraft(bill) && calculateBill(bill).canProceed).slice(0, 5)
+      ? value.recent.filter((bill): bill is BillDraft => isBillDraft(bill) && calculateBill(bill).canProceed).slice(0, 5).map(withoutLegacyChecks)
       : [];
-    return { draft: isBillDraft(value.draft) ? value.draft : null, recent, error: null };
+    return { draft: isBillDraft(value.draft) ? withoutLegacyChecks(value.draft) : null, recent, error: null };
   } catch (error) {
     if (error instanceof SyntaxError) return { draft: null, recent: [], error: null };
     return { draft: null, recent: [], error: "Penyimpanan browser tidak tersedia. Bill tetap bisa dipakai selama tab ini terbuka." };
   }
+}
+
+function withoutLegacyChecks(bill: BillDraft): BillDraft {
+  const draft = { ...bill } as BillDraft & { expectedSubtotal?: unknown; expectedTotal?: unknown };
+  delete draft.expectedSubtotal;
+  delete draft.expectedTotal;
+  return draft;
 }
 
 export function writePersistedState(draft: BillDraft, recent: BillDraft[]): string | null {

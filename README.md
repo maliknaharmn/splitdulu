@@ -17,7 +17,7 @@
 ## How it works
 
 1. Add the people sharing the bill. Choose **Quick Split** to enter each person's starting amount, or **Itemized Split** to assign items and quantities to one or more people.
-2. Add a discount, tax, and service charge. The totals update as you type, and you can check them against the original bill.
+2. Add a discount, tax, and service charge. The totals update as you type. Press **Enter** to advance between fields; use **Tab** for choices and buttons.
 3. Select **Who Paid?** to see what everyone else owes the person who paid.
 4. Copy a group summary for WhatsApp, or share/download a personal or full-group receipt.
 
@@ -25,9 +25,9 @@
 
 - **Two ways to split:** use starting amounts for speed, or track individual and shared items with quantities.
 - **Balanced calculations:** discounts, tax, and service charges are allocated proportionally. Whole-rupiah rounding keeps the sum of everyone's shares equal to the final total.
-- **Bill checks:** Quick Split requires starting amounts to match the subtotal; Itemized Split can check its subtotal against the original bill. Both modes can check the final total.
+- **Bill validation:** Quick Split requires starting amounts to match the subtotal. Both modes validate inputs and keep the calculation balanced, without extra receipt-total checks.
 - **Clear settlements:** see each person's breakdown and the amount they should transfer to the payer.
-- **Shareable receipts:** export personal or full-group receipts as 1080 × 1350 PNG images. Longer receipts are paginated and can be downloaded together as a ZIP. Every image includes a subtle SplitDulu watermark.
+- **Shareable receipts:** export each personal or full-group receipt as one 1080px-wide PNG. Its height grows with the contents, with a scrollable preview and a subtle SplitDulu watermark. No pagination or ZIP needed.
 - **Recent bills:** resume up to five bills saved in the same browser.
 
 ## Calculation rules
@@ -56,6 +56,13 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+```
+
+Browser tests cover Enter navigation, legacy drafts, long receipts, PNG downloads, and sharing on desktop Chromium and mobile WebKit:
+
+```bash
+npx playwright install chromium webkit
+npm run test:e2e
 ```
 
 Built with Next.js, TypeScript, Tailwind CSS, shadcn/ui, and Lucide icons.

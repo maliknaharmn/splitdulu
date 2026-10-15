@@ -1,11 +1,10 @@
 import { billTitle, type BillCalculation, type BillDraft, type PersonBreakdown } from "./bill";
 import { formatDate, formatRupiah } from "./format";
-import { FULL_CONTENT_BOTTOM, FULL_LINE_HEIGHT, FULL_SECTION_HEADER, planFullReceipt, receiptLines, type FullReceiptPage, type FullReceiptSection } from "./receipt-plan";
-import { bundlePngs } from "./zip";
+import { FULL_LINE_HEIGHT, FULL_SECTION_HEADER, PERSONAL_FIRST_BASELINE, PERSONAL_LINE_HEIGHT, planFullReceipt, planPersonalReceipt, receiptLines, type FullReceiptPlan, type FullReceiptSection } from "./receipt-plan";
 
 export const RECEIPT_WIDTH = 1080;
-export const RECEIPT_HEIGHT = 1350;
 export type ReceiptSelection = "full" | string;
+export type RenderedReceipt = { blob: Blob; width: number; height: number };
 
 const ink = "#171B16";
 const muted = "#687064";
@@ -71,45 +70,41 @@ function drawBrand(context: CanvasRenderingContext2D) {
   line(context, 142, 230, 796);
 }
 
-function drawBase(context: CanvasRenderingContext2D, bill: BillDraft) {
+function drawBase(context: CanvasRenderingContext2D, bill: BillDraft, height: number) {
   context.fillStyle = "#F4F5EE";
-  context.fillRect(0, 0, RECEIPT_WIDTH, RECEIPT_HEIGHT);
+  context.fillRect(0, 0, RECEIPT_WIDTH, height);
   context.beginPath();
   context.arc(970, 100, 226, 0, Math.PI * 2);
   context.fillStyle = lime;
   context.fill();
   context.beginPath();
-  context.arc(65, 1252, 182, 0, Math.PI * 2);
+  context.arc(65, height - 98, 182, 0, Math.PI * 2);
   context.fillStyle = "#EBE7F7";
   context.fill();
-  roundedRect(context, 80, 84, 920, 1180, 46, "#FFFFFF");
+  roundedRect(context, 80, 84, 920, height - 170, 46, "#FFFFFF");
   drawBrand(context);
   text(context, billTitle(bill), 142, 300, 48, 800, ink, 796);
   text(context, formatDate(bill.updatedAt), 142, 339, 20, 500, muted);
 }
 
-function drawWatermark(context: CanvasRenderingContext2D, pageNumber = 1, pageCount = 1) {
-  line(context, 142, 1173, 796);
-  text(context, "dibuat dengan SplitDulu", 142, 1201, 19, 700, "#7F897B");
-  if (pageCount > 1) {
-    text(context, `${String(pageNumber).padStart(2, "0")} / ${String(pageCount).padStart(2, "0")}`, 938, 1201, 18, 800, muted, undefined, "right");
-    return;
-  }
+function drawWatermark(context: CanvasRenderingContext2D, height: number) {
+  line(context, 142, height - 177, 796);
+  text(context, "dibuat dengan splitdulu.vercel.app", 142, height - 149, 19, 700, "#7F897B");
   context.beginPath();
-  context.arc(922, 1194, 11, 0, Math.PI * 2);
+  context.arc(922, height - 156, 11, 0, Math.PI * 2);
   context.fillStyle = lime;
   context.fill();
 }
 
 function drawFullSection(context: CanvasRenderingContext2D, bill: BillDraft, result: BillCalculation, section: FullReceiptSection) {
   const person = result.people[section.personIndex];
-  const entries = receiptLines(bill, person).slice(section.start, section.end);
+  const entries = receiptLines(bill, person);
   const { top } = section;
   roundedRect(context, 142, top, 796, 48, 15, "#EAF7D2");
   const amount = formatRupiah(person.total);
   font(context, 23, 800);
   const amountWidth = context.measureText(amount).width;
-  text(context, `${String(section.personIndex + 1).padStart(2, "0")}   ${person.name}${section.continued ? " (lanjutan)" : ""}`, 162, top + 31, 22, 800, ink, Math.max(120, 748 - amountWidth - 20));
+  text(context, `${String(section.personIndex + 1).padStart(2, "0")}   ${person.name}`, 162, top + 31, 22, 800, ink, Math.max(120, 748 - amountWidth - 20));
   text(context, amount, 918, top + 31, 23, 800, ink, undefined, "right");
 
   entries.forEach((entry, index) => {
@@ -123,11 +118,6 @@ function drawFullSection(context: CanvasRenderingContext2D, bill: BillDraft, res
   });
 
   const summaryTop = top + FULL_SECTION_HEADER + entries.length * FULL_LINE_HEIGHT;
-  if (!section.showSummary) {
-    text(context, "Bersambung di halaman berikutnya", 152, summaryTop + 15, 16, 600, muted);
-    return;
-  }
-
   line(context, 142, summaryTop + 4, 796);
   const summaryRows = [
     [["Subtotal", person.gross], ["Diskon", -person.discount]],
@@ -144,28 +134,20 @@ function drawFullSection(context: CanvasRenderingContext2D, bill: BillDraft, res
   });
 }
 
-function drawFull(context: CanvasRenderingContext2D, bill: BillDraft, result: BillCalculation, page: FullReceiptPage, pageIndex: number, pageCount: number) {
-  let verticalOffset = 0;
-  if (pageIndex === 0) {
-    text(context, "TOTAL TAGIHAN", 142, 406, 20, 800, muted);
-    fittedText(context, formatRupiah(result.total), 142, 490, 796);
-    const payer = result.people.find((person) => person.id === bill.payerId);
-    if (payer) {
-      roundedRect(context, 142, 521, 796, 56, 18, "#EAF7D2");
-      text(context, `Dibayar dulu oleh ${payer.name}`, 166, 557, 22, 700, "#385D1B", 744);
-    }
-    text(context, "RINCIAN PER ORANG", 142, 610, 19, 800, muted);
-  } else {
-    const lastSection = page.sections[page.sections.length - 1];
-    verticalOffset = Math.max(0, Math.floor((FULL_CONTENT_BOTTOM - lastSection.top - lastSection.height) / 2));
-    text(context, "RINCIAN PER ORANG · LANJUTAN", 142, 398 + verticalOffset, 19, 800, muted);
+function drawFull(context: CanvasRenderingContext2D, bill: BillDraft, result: BillCalculation, plan: FullReceiptPlan) {
+  text(context, "TOTAL TAGIHAN", 142, 406, 20, 800, muted);
+  fittedText(context, formatRupiah(result.total), 142, 490, 796);
+  const payer = result.people.find((person) => person.id === bill.payerId);
+  if (payer) {
+    roundedRect(context, 142, 521, 796, 56, 18, "#EAF7D2");
+    text(context, `Dibayar dulu oleh ${payer.name}`, 166, 557, 22, 700, "#385D1B", 744);
   }
-  page.sections.forEach((section) => drawFullSection(context, bill, result, { ...section, top: section.top + verticalOffset }));
-  drawWatermark(context, pageIndex + 1, pageCount);
+  text(context, "RINCIAN PER ORANG", 142, 610, 19, 800, muted);
+  plan.sections.forEach((section) => drawFullSection(context, bill, result, section));
 }
 
-function drawItemRow(context: CanvasRenderingContext2D, name: string, amount: number, x: number, y: number, width: number, compact: boolean) {
-  const size = compact ? 19 : 23;
+function drawItemRow(context: CanvasRenderingContext2D, name: string, amount: number, x: number, y: number, width: number) {
+  const size = 23;
   const amountText = formatRupiah(amount);
   font(context, size, 700);
   const amountWidth = context.measureText(amountText).width;
@@ -173,7 +155,7 @@ function drawItemRow(context: CanvasRenderingContext2D, name: string, amount: nu
   text(context, amountText, x + width, y, size, 700, ink, undefined, "right");
 }
 
-function drawPersonal(context: CanvasRenderingContext2D, person: PersonBreakdown, mode: BillDraft["mode"]) {
+function drawPersonal(context: CanvasRenderingContext2D, person: PersonBreakdown, mode: BillDraft["mode"], summaryTop: number) {
   text(context, "BAGIAN UNTUK", 142, 407, 20, 800, muted);
   text(context, person.name, 142, 458, 48, 800, ink, 796);
   fittedText(context, formatRupiah(person.total), 142, 542, 796, 78);
@@ -183,17 +165,12 @@ function drawPersonal(context: CanvasRenderingContext2D, person: PersonBreakdown
   const entries = mode === "quick"
     ? [{ name: "Bagian awal", quantity: 1, amount: person.gross }]
     : person.itemShares;
-  const compact = entries.length > 10;
   entries.forEach((entry, index) => {
-    const column = compact && index >= 10 ? 1 : 0;
-    const row = compact ? index % 10 : index;
-    const x = column === 0 ? 142 : 558;
-    const width = compact ? 376 : 796;
     const name = `${entry.name}${entry.quantity > 1 ? ` ×${entry.quantity}` : ""}`;
-    drawItemRow(context, name, entry.amount, x, 670 + row * (compact ? 38 : 38), width, compact);
+    drawItemRow(context, name, entry.amount, 142, PERSONAL_FIRST_BASELINE + index * PERSONAL_LINE_HEIGHT, 796);
   });
 
-  line(context, 142, 1035, 796);
+  line(context, 142, summaryTop, 796);
   const rows = [
     ["Subtotal", person.gross],
     ["Diskon", -person.discount],
@@ -201,14 +178,13 @@ function drawPersonal(context: CanvasRenderingContext2D, person: PersonBreakdown
     ["Service", person.service],
   ] as const;
   rows.forEach(([label, value], index) => {
-    const y = 1064 + index * 27;
+    const y = summaryTop + 29 + index * 27;
     text(context, label, 142, y, 20, 600, muted);
     text(context, `${value < 0 ? "−" : ""}${formatRupiah(Math.abs(value))}`, 938, y, 20, 700, ink, undefined, "right");
   });
-  drawWatermark(context);
 }
 
-export async function renderReceiptPages(bill: BillDraft, result: BillCalculation, selection: ReceiptSelection): Promise<Blob[]> {
+export async function renderReceipt(bill: BillDraft, result: BillCalculation, selection: ReceiptSelection): Promise<RenderedReceipt> {
   if (!result.canProceed) throw new Error("Bill belum siap untuk dibagikan.");
   const person = selection === "full" ? null : result.people.find((entry) => entry.id === selection);
   if (selection !== "full" && !person) throw new Error("Orang untuk struk tidak ditemukan.");
@@ -217,29 +193,28 @@ export async function renderReceiptPages(bill: BillDraft, result: BillCalculatio
     document.fonts.load("700 32px Montserrat"),
     document.fonts.load("800 82px Montserrat"),
   ]);
-  const pages = person ? [null] : planFullReceipt(bill, result);
-  const blobs: Blob[] = [];
-  for (let index = 0; index < pages.length; index += 1) {
-    const page = pages[index];
-    const canvas = document.createElement("canvas");
-    canvas.width = RECEIPT_WIDTH;
-    canvas.height = RECEIPT_HEIGHT;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Browser tidak dapat membuat gambar struk.");
-    drawBase(context, bill);
-    if (person) drawPersonal(context, person, bill.mode);
-    else if (page) drawFull(context, bill, result, page, index, pages.length);
-    blobs.push(await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Gambar PNG tidak berhasil dibuat.")), "image/png");
-    }));
-  }
-  return blobs;
+  const fullPlan = person ? null : planFullReceipt(bill, result);
+  const personalPlan = person ? planPersonalReceipt(bill, person) : null;
+  const height = personalPlan?.height ?? fullPlan!.height;
+  const canvas = document.createElement("canvas");
+  canvas.width = RECEIPT_WIDTH;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Browser tidak dapat membuat gambar struk.");
+  drawBase(context, bill, height);
+  if (person && personalPlan) drawPersonal(context, person, bill.mode, personalPlan.summaryTop);
+  else if (fullPlan) drawFull(context, bill, result, fullPlan);
+  drawWatermark(context, height);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Gambar PNG tidak berhasil dibuat. Coba browser lain jika struk terlalu panjang.")), "image/png");
+  });
+  return { blob, width: RECEIPT_WIDTH, height };
 }
 
-export function receiptFileName(bill: BillDraft, result: BillCalculation, selection: ReceiptSelection, pageNumber?: number): string {
+export function receiptFileName(bill: BillDraft, result: BillCalculation, selection: ReceiptSelection): string {
   const name = selection === "full" ? billTitle(bill) : result.people.find((person) => person.id === selection)?.name || "personal";
   const slug = name.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "bill";
-  return `splitdulu-${slug}${pageNumber ? `-halaman-${pageNumber}` : ""}.png`;
+  return `splitdulu-${slug}.png`;
 }
 
 export function downloadReceipt(blob: Blob, fileName: string) {
@@ -253,17 +228,8 @@ export function downloadReceipt(blob: Blob, fileName: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
-export async function downloadReceiptPages(blobs: Blob[], fileNames: string[], archiveName: string) {
-  if (blobs.length === 1) {
-    downloadReceipt(blobs[0], fileNames[0]);
-    return;
-  }
-  const archive = await bundlePngs(blobs.map((blob, index) => ({ name: fileNames[index], blob })));
-  downloadReceipt(archive, archiveName);
-}
-
-export async function shareReceiptPages(blobs: Blob[], fileNames: string[], archiveName: string): Promise<"shared" | "downloaded" | "cancelled"> {
-  const files = blobs.map((blob, index) => new File([blob], fileNames[index], { type: "image/png" }));
+export async function shareReceipt(blob: Blob, fileName: string): Promise<"shared" | "downloaded" | "cancelled"> {
+  const files = [new File([blob], fileName, { type: "image/png" })];
   let canShare = false;
   try {
     canShare = typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files });
@@ -278,6 +244,6 @@ export async function shareReceiptPages(blobs: Blob[], fileNames: string[], arch
       if (error instanceof DOMException && error.name === "AbortError") return "cancelled";
     }
   }
-  await downloadReceiptPages(blobs, fileNames, archiveName);
+  downloadReceipt(blob, fileName);
   return "downloaded";
 }

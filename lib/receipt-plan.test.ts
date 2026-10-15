@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { calculateBill, createBlankBill } from "./bill";
-import { FULL_CONTENT_BOTTOM, planFullReceipt, receiptLines } from "./receipt-plan";
+import { FULL_FIRST_TOP, PERSONAL_FIRST_BASELINE, PERSONAL_LINE_HEIGHT, RECEIPT_FOOTER_SPACE, fullSectionHeight, planFullReceipt, planPersonalReceipt, receiptLines } from "./receipt-plan";
 
-describe("full receipt pagination", () => {
+describe("single-image receipt layout", () => {
   it("keeps two small itemized breakdowns on one image", () => {
     const bill = createBlankBill("small");
     bill.mode = "itemized";
@@ -15,12 +15,13 @@ describe("full receipt pagination", () => {
     ];
     bill.payerId = "person-1";
     const result = calculateBill(bill);
-    const pages = planFullReceipt(bill, result);
+    const plan = planFullReceipt(bill, result);
 
     expect(result.canProceed).toBe(true);
-    expect(pages).toHaveLength(1);
-    expect(pages[0].sections).toHaveLength(2);
-    expect(pages[0].sections.every((section) => section.showSummary)).toBe(true);
+    expect(plan.height).toBe(1350);
+    expect(plan.sections).toHaveLength(2);
+    expect(plan.sections[0].top).toBe(FULL_FIRST_TOP);
+    expect(plan.sections[1].top).toBe(FULL_FIRST_TOP + fullSectionHeight(2));
     expect(receiptLines(bill, result.people[0])[1]).toEqual({ name: "Fries", formula: "2 × Rp15.000 ÷ 2 orang", amount: 15_000 });
   });
 
@@ -40,20 +41,41 @@ describe("full receipt pagination", () => {
     bill.service = { kind: "percent", value: 500 };
     bill.payerId = "person-0";
     const result = calculateBill(bill);
-    const pages = planFullReceipt(bill, result);
+    const plan = planFullReceipt(bill, result);
 
     expect(result.canProceed).toBe(true);
-    expect(pages.length).toBeGreaterThan(1);
-    expect(pages.every((page) => page.sections.length > 0)).toBe(true);
-    expect(pages.flatMap((page) => page.sections).every((section) => section.top + section.height <= FULL_CONTENT_BOTTOM)).toBe(true);
+    expect(plan.height).toBeGreaterThan(1350);
+    expect(plan.sections).toHaveLength(12);
+    expect(plan.sections.every((section) => section.top + section.height <= plan.height - RECEIPT_FOOTER_SPACE)).toBe(true);
 
     for (const personIndex of result.people.keys()) {
-      const sections = pages.flatMap((page) => page.sections).filter((section) => section.personIndex === personIndex);
-      expect(sections.reduce((count, section) => count + section.end - section.start, 0)).toBe(20);
-      expect(sections.filter((section) => section.showSummary)).toHaveLength(1);
-      expect(sections[0].start).toBe(0);
-      expect(sections.at(-1)?.end).toBe(20);
-      for (let index = 1; index < sections.length; index += 1) expect(sections[index].start).toBe(sections[index - 1].end);
+      const section = plan.sections[personIndex];
+      expect(section.personIndex).toBe(personIndex);
+      expect(section.height).toBe(fullSectionHeight(20));
+      if (personIndex > 0) expect(section.top).toBe(plan.sections[personIndex - 1].top + plan.sections[personIndex - 1].height);
     }
+    expect(plan.height).toBe(FULL_FIRST_TOP + 12 * fullSectionHeight(20) + RECEIPT_FOOTER_SPACE);
+  });
+
+  it("extends personal receipts rather than squeezing items into columns", () => {
+    const bill = createBlankBill("personal");
+    bill.mode = "itemized";
+    bill.items = Array.from({ length: 20 }, (_, index) => ({ id: `item-${index}`, name: `Menu ${index + 1}`, unitPrice: 10_000, quantity: 1, participantIds: ["person-1"] }));
+    const person = calculateBill(bill).people[0];
+    const plan = planPersonalReceipt(bill, person);
+    const lastItemBaseline = PERSONAL_FIRST_BASELINE + 19 * PERSONAL_LINE_HEIGHT;
+    expect(plan.summaryTop).toBeGreaterThan(lastItemBaseline);
+    expect(plan.height).toBeGreaterThan(1350);
+    expect(plan.summaryTop + 110).toBeLessThan(plan.height - 177);
+  });
+
+  it("keeps quick receipts at least the original size and handles people without items", () => {
+    const bill = createBlankBill("quick");
+    const person = calculateBill(bill).people[0];
+    expect(planPersonalReceipt(bill, person).height).toBe(1350);
+    expect(planFullReceipt(bill, calculateBill(bill)).height).toBe(1350);
+    bill.mode = "itemized";
+    expect(receiptLines(bill, person)).toEqual([{ name: "Belum ada pesanan", formula: "Tidak ada item untuk orang ini", amount: 0 }]);
+    expect(planPersonalReceipt(bill, person).height).toBe(1350);
   });
 });

@@ -34,6 +34,17 @@ describe("local bill storage", () => {
     expect(readPersistedState().recent).toEqual([]);
   });
 
+  it("restores old bills and discards obsolete receipt-total checks", () => {
+    const legacy = { ...savedBill("legacy"), expectedSubtotal: 1, expectedTotal: 1 };
+    vi.stubGlobal("window", { localStorage: { getItem: () => JSON.stringify({ version: 1, draft: legacy, recent: [legacy] }) } });
+    const restored = readPersistedState();
+    expect(restored.draft?.id).toBe("legacy");
+    expect(restored.recent).toHaveLength(1);
+    expect(restored.draft).not.toHaveProperty("expectedSubtotal");
+    expect(restored.draft).not.toHaveProperty("expectedTotal");
+    expect(restored.recent[0]).not.toHaveProperty("expectedTotal");
+  });
+
   it("keeps the session usable when storage is denied", () => {
     vi.stubGlobal("window", { localStorage: { getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("denied"); } } });
     expect(readPersistedState().error).toMatch(/tidak tersedia/);
