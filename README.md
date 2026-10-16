@@ -6,13 +6,13 @@
 
 ## Preview
 
-**Build the bill.** Add participants, assign shared items and quantities, and check the running totals.
+From an itemized bill to balanced shares and one full-group receipt ready to send.
 
-[![SplitDulu itemized bill entry and total summary](screenshots/demo-1.png)](screenshots/demo-1.png)
-
-**Settle and share.** Review each person's share, see who owes the payer, and export a detailed receipt.
-
-[![SplitDulu settlement summary and full receipt preview](screenshots/demo-2.png)](screenshots/demo-2.png)
+<p align="center">
+  <a href="screenshots/splitdulu-poster.png">
+    <img src="screenshots/splitdulu-poster.png" alt="SplitDulu poster showing a balanced group bill, settlement amounts, and one combined receipt ready to share" width="420" />
+  </a>
+</p>
 
 ## How it works
 
